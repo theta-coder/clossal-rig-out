@@ -1,0 +1,270 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Search, User, Heart, ShoppingBag, Menu, X, ChevronDown, ArrowRight } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+
+export default function Navbar() {
+    const [isScrolled, setIsScrolled] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const searchInputRef = useRef(null);
+    const navigate = useNavigate();
+
+    const { cartCount, setIsCartOpen } = useCart();
+    const location = useLocation();
+
+    // Dummy product catalog for global search
+    const allProducts = [
+        { id: 'p1', name: 'Premium Cotton Blank Tee', category: 'T-Shirts', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=150' },
+        { id: 'p2', name: 'Slim Fit Oxford Shirt', category: 'Shirts', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=150' },
+        { id: 'p3', name: 'Essential Fleece Hoodie', category: 'Hoodies', image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&q=80&w=150' },
+        { id: 'p4', name: 'Slim Fit Stretch Chinos', category: 'Bottoms', image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=150' },
+        { id: 'p5', name: 'Classic Denim Jacket', category: 'Outerwear', image: 'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?auto=format&fit=crop&q=80&w=150' },
+        { id: 'p6', name: 'Kids Graphic T-Shirt', category: 'Kids', image: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=150' }
+    ];
+
+    const isHome = location.pathname === '/';
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 50);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    useEffect(() => {
+        if (searchOpen && searchInputRef.current) {
+            setTimeout(() => {
+                searchInputRef.current.focus();
+            }, 100);
+        }
+    }, [searchOpen]);
+
+    const transparentNav = isHome && !isScrolled;
+
+    const filteredProducts = searchQuery.trim() === ''
+        ? []
+        : allProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        setSearchOpen(false);
+        navigate('/shop');
+    };
+
+    return (
+        <>
+            {/* Top Banner */}
+            <div className="bg-black text-white py-2 text-center text-xs md:text-sm font-medium tracking-wide">
+                Free shipping on all orders over PKR 5,000 | <Link to="/shop" className="text-gray-300 underline cursor-pointer hover:text-white transition">Shop Now</Link>
+            </div>
+
+            <header className={`fixed w-full top-auto z-40 transition-all duration-300 ${transparentNav ? 'py-4 bg-transparent text-white' : 'py-3 bg-white shadow-sm border-b border-gray-100 text-black'}`}>
+                <div className="container mx-auto px-4 md:px-8 flex justify-between items-center relative">
+
+                    <button onClick={() => setMobileMenuOpen(true)} className="md:hidden header-icon hover:text-gray-500 transition">
+                        <Menu className="w-6 h-6" />
+                    </button>
+
+                    <Link to="/" className="text-2xl md:text-3xl font-heading font-bold tracking-tighter uppercase logo-text flex-shrink-0">
+                        Urban<span className={transparentNav ? "text-gray-300" : "gradient-text"}>Threads</span>
+                    </Link>
+
+                    <nav className="hidden md:flex space-x-8 items-center h-full">
+                        <Link to="/" className={`font-medium transition text-sm uppercase tracking-wider ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>Home</Link>
+                        <Link to="/shop" className={`font-medium transition text-sm uppercase tracking-wider ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>Shop</Link>
+
+                        <div className="group relative h-full flex items-center py-6 cursor-pointer">
+                            <span className={`font-medium transition text-sm uppercase tracking-wider flex items-center ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>
+                                Men <ChevronDown className="w-4 h-4 ml-1" />
+                            </span>
+                            <div className="absolute top-[70px] left-1/2 transform -translate-x-1/2 w-[600px] bg-white text-black shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 rounded-b-lg border-t-2 border-black p-8 grid grid-cols-2 gap-8">
+                                <div>
+                                    <h3 className="font-heading font-bold text-lg mb-4 border-b pb-2">Apparel</h3>
+                                    <ul className="space-y-2 text-sm text-gray-600">
+                                        <li><Link to="/shop" state={{ category: 'T-Shirts' }} className="hover:text-black transition">T-Shirts</Link></li>
+                                        <li><Link to="/shop" state={{ category: 'Shirts' }} className="hover:text-black transition">Shirts</Link></li>
+                                        <li><Link to="/shop" state={{ category: 'Hoodies' }} className="hover:text-black transition">Hoodies</Link></li>
+                                        <li><Link to="/shop" state={{ category: 'Bottoms' }} className="hover:text-black transition">Bottoms</Link></li>
+                                    </ul>
+                                </div>
+                                <div className="relative rounded-lg overflow-hidden group/img h-48">
+                                    <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=400" alt="Men Collection" className="w-full h-full object-cover transition duration-500 group-hover/img:scale-110" />
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                        <span className="text-white font-heading font-bold text-xl border-b-2 border-white pb-1">Shop Men</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="group relative h-full flex items-center py-6 cursor-pointer">
+                            <span className={`font-medium transition text-sm uppercase tracking-wider flex items-center ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>
+                                Kids <ChevronDown className="w-4 h-4 ml-1" />
+                            </span>
+                            <div className="absolute top-[70px] left-1/2 transform -translate-x-1/2 w-[600px] bg-white text-black shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 rounded-b-lg border-t-2 border-black p-8 grid grid-cols-2 gap-8">
+                                <div>
+                                    <h3 className="font-heading font-bold text-lg mb-4 border-b pb-2">Collection</h3>
+                                    <ul className="space-y-2 text-sm text-gray-600">
+                                        <li><Link to="/shop" state={{ category: 'Boys' }} className="hover:text-black transition">Boys Clothing</Link></li>
+                                        <li><Link to="/shop" state={{ category: 'Girls' }} className="hover:text-black transition">Girls Clothing</Link></li>
+                                    </ul>
+                                </div>
+                                <div className="relative rounded-lg overflow-hidden group/img h-48">
+                                    <img src="https://images.unsplash.com/photo-1519238263530-99abad672f20?auto=format&fit=crop&q=80&w=400" alt="Kids Collection" className="w-full h-full object-cover transition duration-500 group-hover/img:scale-110" />
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                        <span className="text-white font-heading font-bold text-xl border-b-2 border-white pb-1">Shop Kids</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div className="flex items-center space-x-4 md:space-x-6">
+                        <button onClick={() => setSearchOpen(true)} className={`hover:text-gray-400 transition ${transparentNav ? 'text-white' : 'text-black'}`}>
+                            <Search className="w-5 h-5 md:w-6 md:h-6" />
+                        </button>
+                        <Link to="/profile" className="text-black hover:text-gray-500 transition-colors">
+                            <User className="w-5 h-5 md:w-6 md:h-6" />
+                        </Link>
+                        <Link to="/wishlist" className={`hidden md:block hover:text-gray-400 transition ${transparentNav ? 'text-white' : 'text-black'}`}>
+                            <Heart className="w-5 h-5 md:w-6 md:h-6" />
+                        </Link>
+                        <button onClick={() => setIsCartOpen(true)} className={`relative hover:text-gray-400 transition flex items-center ${transparentNav ? 'text-white' : 'text-black'}`}>
+                            <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-black text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center border border-white">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Mobile Menu */}
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-[60] flex">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity" onClick={() => setMobileMenuOpen(false)}></div>
+                    <div className="relative w-4/5 max-w-sm bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
+
+                        {/* Mobile Menu Header */}
+                        <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-gray-50/50">
+                            <span className="font-heading font-bold text-2xl tracking-tighter uppercase logo-text">
+                                Urban<span className="gradient-text">Threads</span>
+                            </span>
+                            <button onClick={() => setMobileMenuOpen(false)} className="text-gray-400 hover:text-black transition-colors p-2 rounded-full hover:bg-gray-100">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Mobile Menu Content */}
+                        <div className="flex-1 overflow-y-auto w-full">
+                            <nav className="flex flex-col py-6 px-4">
+                                <Link to="/" onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
+                                    <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Home</span>
+                                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
+                                </Link>
+                                <Link to="/shop" onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
+                                    <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Shop All</span>
+                                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
+                                </Link>
+                                <Link to="/shop" state={{ category: 'Men' }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
+                                    <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Men's Apparel</span>
+                                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
+                                </Link>
+                                <Link to="/shop" state={{ category: 'Kids' }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
+                                    <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Kids Collection</span>
+                                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
+                                </Link>
+                                <Link to="/shop" state={{ category: 'Sale' }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
+                                    <span className="text-xl font-heading font-bold text-red-600 uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Sale Extravaganza</span>
+                                    <ArrowRight className="w-5 h-5 text-red-300 group-hover:text-red-600 transition-colors" />
+                                </Link>
+                            </nav>
+                        </div>
+
+                        {/* Mobile Menu Footer */}
+                        <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-sm font-bold uppercase tracking-widest text-black hover:border-black transition-colors shadow-sm">
+                                    <User className="w-4 h-4" /> Account
+                                </Link>
+                                <Link to="/wishlist" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-sm font-bold uppercase tracking-widest text-black hover:border-black transition-colors shadow-sm">
+                                    <Heart className="w-4 h-4" /> Wishlist
+                                </Link>
+                            </div>
+                            <div className="flex justify-center space-x-6">
+                                <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="text-xs font-semibold text-gray-500 uppercase tracking-widest hover:text-black transition-colors underline-offset-4 hover:underline">Help & Support</Link>
+                                <Link to="/track-order" onClick={() => setMobileMenuOpen(false)} className="text-xs font-semibold text-gray-500 uppercase tracking-widest hover:text-black transition-colors underline-offset-4 hover:underline">Track Order</Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Search Overlay Modal */}
+            {searchOpen && (
+                <div className="fixed inset-0 z-[70] bg-white animate-fade-in flex flex-col">
+                    <div className="container mx-auto px-4 py-8 flex-shrink-0 border-b border-gray-100 relative">
+                        <button onClick={() => setSearchOpen(false)} className="absolute right-4 top-8 text-black hover:text-gray-500 transition">
+                            <X className="w-8 h-8" />
+                        </button>
+
+                        <div className="max-w-3xl mx-auto mt-10">
+                            <form onSubmit={handleSearchSubmit} className="relative">
+                                <Search className="absolute left-0 top-1/2 transform -translate-y-1/2 w-8 h-8 text-gray-400" />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search products, categories..."
+                                    className="w-full text-2xl md:text-4xl font-heading font-light pl-12 pr-4 py-4 focus:outline-none placeholder-gray-300 text-black border-none"
+                                />
+                            </form>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto bg-gray-50 py-12">
+                        <div className="container mx-auto px-4 max-w-4xl">
+                            {searchQuery.trim() === '' ? (
+                                <div className="text-center text-gray-400 mt-10">
+                                    <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                    <p className="font-heading uppercase tracking-widest">Type to start searching</p>
+                                </div>
+                            ) : filteredProducts.length > 0 ? (
+                                <div>
+                                    <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-6 border-b border-gray-200 pb-2">Results for "{searchQuery}"</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {filteredProducts.map(product => (
+                                            <Link
+                                                key={product.id}
+                                                to={`/product/${product.id}`}
+                                                onClick={() => setSearchOpen(false)}
+                                                className="flex items-center gap-4 bg-white p-4 border border-gray-100 hover:border-black hover:shadow-lg transition group"
+                                            >
+                                                <img src={product.image} alt={product.name} className="w-16 h-20 object-cover bg-gray-100" />
+                                                <div className="flex-1">
+                                                    <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-1">{product.category}</div>
+                                                    <h4 className="font-bold text-black group-hover:text-gray-600 transition">{product.name}</h4>
+                                                </div>
+                                                <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition transform group-hover:translate-x-1" />
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center text-gray-500 mt-10">
+                                    <p className="text-xl font-heading mb-2">No results found for "{searchQuery}"</p>
+                                    <p className="text-sm">Please check your spelling or try different keywords.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
