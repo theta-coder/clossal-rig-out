@@ -1,28 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, User, Heart, ShoppingBag, Menu, X, ChevronDown, ArrowRight } from 'lucide-react';
+import { Search, User, Heart, ShoppingBag, Menu, X, ChevronDown, ArrowRight, Loader2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../api';
 
 export default function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [apiCategories, setApiCategories] = useState([]);
+    const [searchResults, setSearchResults] = useState([]);
+    const [searchLoading, setSearchLoading] = useState(false);
     const searchInputRef = useRef(null);
+    const searchTimerRef = useRef(null);
     const navigate = useNavigate();
 
     const { cartCount, setIsCartOpen } = useCart();
+    const { user } = useAuth();
     const location = useLocation();
-
-    // Dummy product catalog for global search
-    const allProducts = [
-        { id: 'p1', name: 'Premium Cotton Blank Tee', category: 'T-Shirts', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=150' },
-        { id: 'p2', name: 'Slim Fit Oxford Shirt', category: 'Shirts', image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=150' },
-        { id: 'p3', name: 'Essential Fleece Hoodie', category: 'Hoodies', image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&q=80&w=150' },
-        { id: 'p4', name: 'Slim Fit Stretch Chinos', category: 'Bottoms', image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=150' },
-        { id: 'p5', name: 'Classic Denim Jacket', category: 'Outerwear', image: 'https://images.unsplash.com/photo-1576871337622-98d48d1cf531?auto=format&fit=crop&q=80&w=150' },
-        { id: 'p6', name: 'Kids Graphic T-Shirt', category: 'Kids', image: 'https://images.unsplash.com/photo-1519689680058-324335c77eba?auto=format&fit=crop&q=80&w=150' }
-    ];
 
     const isHome = location.pathname === '/';
 
@@ -34,19 +31,63 @@ export default function Navbar() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Fetch categories from dashboard API
+    useEffect(() => {
+        fetch(`${API_URL}/categories`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setApiCategories(data.data);
+                }
+            })
+            .catch(() => { });
+    }, []);
+
     useEffect(() => {
         if (searchOpen && searchInputRef.current) {
             setTimeout(() => {
                 searchInputRef.current.focus();
             }, 100);
         }
+        if (!searchOpen) {
+            setSearchQuery('');
+            setSearchResults([]);
+        }
     }, [searchOpen]);
 
-    const transparentNav = isHome && !isScrolled;
+    // Debounced API search
+    useEffect(() => {
+        if (searchQuery.trim() === '') {
+            setSearchResults([]);
+            setSearchLoading(false);
+            return;
+        }
+        setSearchLoading(true);
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+        searchTimerRef.current = setTimeout(() => {
+            fetch(`${API_URL}/products?search=${encodeURIComponent(searchQuery)}&per_page=6`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.data) {
+                        setSearchResults(data.data.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            category: p.category,
+                            image: p.images.length > 0 ? p.images[0].url : 'https://via.placeholder.com/150x150?text=No+Image',
+                            price: p.price,
+                        })));
+                    }
+                    setSearchLoading(false);
+                })
+                .catch(() => {
+                    setSearchResults([]);
+                    setSearchLoading(false);
+                });
+        }, 400);
+        return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+    }, [searchQuery]);
 
-    const filteredProducts = searchQuery.trim() === ''
-        ? []
-        : allProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+    const transparentNav = isHome && !isScrolled;
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
@@ -76,56 +117,40 @@ export default function Navbar() {
                         <Link to="/" className={`font-medium transition text-sm uppercase tracking-wider ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>Home</Link>
                         <Link to="/shop" className={`font-medium transition text-sm uppercase tracking-wider ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>Shop</Link>
 
-                        <div className="group relative h-full flex items-center py-6 cursor-pointer">
-                            <span className={`font-medium transition text-sm uppercase tracking-wider flex items-center ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>
-                                Men <ChevronDown className="w-4 h-4 ml-1" />
-                            </span>
-                            <div className="absolute top-[70px] left-1/2 transform -translate-x-1/2 w-[600px] bg-white text-black shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 rounded-b-lg border-t-2 border-black p-8 grid grid-cols-2 gap-8">
-                                <div>
-                                    <h3 className="font-heading font-bold text-lg mb-4 border-b pb-2">Apparel</h3>
-                                    <ul className="space-y-2 text-sm text-gray-600">
-                                        <li><Link to="/shop" state={{ category: 'T-Shirts' }} className="hover:text-black transition">T-Shirts</Link></li>
-                                        <li><Link to="/shop" state={{ category: 'Shirts' }} className="hover:text-black transition">Shirts</Link></li>
-                                        <li><Link to="/shop" state={{ category: 'Hoodies' }} className="hover:text-black transition">Hoodies</Link></li>
-                                        <li><Link to="/shop" state={{ category: 'Bottoms' }} className="hover:text-black transition">Bottoms</Link></li>
-                                    </ul>
-                                </div>
-                                <div className="relative rounded-lg overflow-hidden group/img h-48">
-                                    <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?auto=format&fit=crop&q=80&w=400" alt="Men Collection" className="w-full h-full object-cover transition duration-500 group-hover/img:scale-110" />
-                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                        <span className="text-white font-heading font-bold text-xl border-b-2 border-white pb-1">Shop Men</span>
+                        {apiCategories.length > 0 && apiCategories.map(cat => (
+                            <div key={cat.id} className="group relative h-full flex items-center py-6 cursor-pointer">
+                                <Link to="/shop" state={{ category: cat.name }} className={`font-medium transition text-sm uppercase tracking-wider flex items-center ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>
+                                    {cat.name} {cat.subcategories.length > 0 && <ChevronDown className="w-4 h-4 ml-1" />}
+                                </Link>
+                                {cat.subcategories.length > 0 && (
+                                    <div className="absolute top-[70px] left-1/2 transform -translate-x-1/2 w-[600px] bg-white text-black shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 rounded-b-lg border-t-2 border-black p-8 grid grid-cols-2 gap-8">
+                                        <div>
+                                            <h3 className="font-heading font-bold text-lg mb-4 border-b pb-2">{cat.name}</h3>
+                                            <ul className="space-y-2 text-sm text-gray-600">
+                                                {cat.subcategories.map(sub => (
+                                                    <li key={sub.id}><Link to="/shop" state={{ category: sub.name }} className="hover:text-black transition">{sub.name}</Link></li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        {cat.image && (
+                                            <div className="relative rounded-lg overflow-hidden group/img h-48">
+                                                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover transition duration-500 group-hover/img:scale-110" />
+                                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                                    <span className="text-white font-heading font-bold text-xl border-b-2 border-white pb-1">Shop {cat.name}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        </div>
-
-                        <div className="group relative h-full flex items-center py-6 cursor-pointer">
-                            <span className={`font-medium transition text-sm uppercase tracking-wider flex items-center ${transparentNav ? 'hover:text-gray-300' : 'hover:text-gray-500'}`}>
-                                Kids <ChevronDown className="w-4 h-4 ml-1" />
-                            </span>
-                            <div className="absolute top-[70px] left-1/2 transform -translate-x-1/2 w-[600px] bg-white text-black shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 rounded-b-lg border-t-2 border-black p-8 grid grid-cols-2 gap-8">
-                                <div>
-                                    <h3 className="font-heading font-bold text-lg mb-4 border-b pb-2">Collection</h3>
-                                    <ul className="space-y-2 text-sm text-gray-600">
-                                        <li><Link to="/shop" state={{ category: 'Boys' }} className="hover:text-black transition">Boys Clothing</Link></li>
-                                        <li><Link to="/shop" state={{ category: 'Girls' }} className="hover:text-black transition">Girls Clothing</Link></li>
-                                    </ul>
-                                </div>
-                                <div className="relative rounded-lg overflow-hidden group/img h-48">
-                                    <img src="https://images.unsplash.com/photo-1519238263530-99abad672f20?auto=format&fit=crop&q=80&w=400" alt="Kids Collection" className="w-full h-full object-cover transition duration-500 group-hover/img:scale-110" />
-                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                        <span className="text-white font-heading font-bold text-xl border-b-2 border-white pb-1">Shop Kids</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        ))}
                     </nav>
 
                     <div className="flex items-center space-x-4 md:space-x-6">
                         <button onClick={() => setSearchOpen(true)} className={`hover:text-gray-400 transition ${transparentNav ? 'text-white' : 'text-black'}`}>
                             <Search className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
-                        <Link to="/profile" className="text-black hover:text-gray-500 transition-colors">
+                        <Link to={user ? "/profile" : "/login"} className={`hover:text-gray-400 transition flex items-center ${transparentNav ? 'text-white' : 'text-black'}`}>
                             <User className="w-5 h-5 md:w-6 md:h-6" />
                         </Link>
                         <Link to="/wishlist" className={`hidden md:block hover:text-gray-400 transition ${transparentNav ? 'text-white' : 'text-black'}`}>
@@ -170,14 +195,12 @@ export default function Navbar() {
                                     <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Shop All</span>
                                     <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
                                 </Link>
-                                <Link to="/shop" state={{ category: 'Men' }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
-                                    <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Men's Apparel</span>
-                                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
-                                </Link>
-                                <Link to="/shop" state={{ category: 'Kids' }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
-                                    <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Kids Collection</span>
-                                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
-                                </Link>
+                                {apiCategories.length > 0 && apiCategories.map(cat => (
+                                    <Link key={cat.id} to="/shop" state={{ category: cat.name }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
+                                        <span className="text-xl font-heading font-semibold text-black uppercase tracking-wider group-hover:pl-2 transition-all duration-300">{cat.name}</span>
+                                        <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition-colors" />
+                                    </Link>
+                                ))}
                                 <Link to="/shop" state={{ category: 'Sale' }} onClick={() => setMobileMenuOpen(false)} className="group flex items-center justify-between py-4 px-4 border-b border-gray-100/50 hover:bg-gray-50 transition-colors">
                                     <span className="text-xl font-heading font-bold text-red-600 uppercase tracking-wider group-hover:pl-2 transition-all duration-300">Sale Extravaganza</span>
                                     <ArrowRight className="w-5 h-5 text-red-300 group-hover:text-red-600 transition-colors" />
@@ -234,11 +257,16 @@ export default function Navbar() {
                                     <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
                                     <p className="font-heading uppercase tracking-widest">Type to start searching</p>
                                 </div>
-                            ) : filteredProducts.length > 0 ? (
+                            ) : searchLoading ? (
+                                <div className="text-center mt-10">
+                                    <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-gray-400" />
+                                    <p className="text-gray-400 font-heading uppercase tracking-widest">Searching...</p>
+                                </div>
+                            ) : searchResults.length > 0 ? (
                                 <div>
                                     <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-6 border-b border-gray-200 pb-2">Results for "{searchQuery}"</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {filteredProducts.map(product => (
+                                        {searchResults.map(product => (
                                             <Link
                                                 key={product.id}
                                                 to={`/product/${product.id}`}
@@ -249,6 +277,7 @@ export default function Navbar() {
                                                 <div className="flex-1">
                                                     <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-1">{product.category}</div>
                                                     <h4 className="font-bold text-black group-hover:text-gray-600 transition">{product.name}</h4>
+                                                    <span className="text-sm font-bold text-black mt-1 block">PKR {product.price.toLocaleString()}</span>
                                                 </div>
                                                 <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-black transition transform group-hover:translate-x-1" />
                                             </Link>

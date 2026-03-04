@@ -3,46 +3,46 @@ import { useCart } from '../context/CartContext';
 import { ArrowRight, ShoppingBag, Heart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useFavorites } from '../context/FavoritesContext';
+import { API_URL } from '../api';
 
 export default function Home() {
     const { addToCart } = useCart();
     const { toggleFavorite, isFavorite } = useFavorites();
+    const [apiCategories, setApiCategories] = useState([]);
+    const [newArrivals, setNewArrivals] = useState([]);
 
-    // Dummy data for New Arrivals mapped from earlier HTML version
-    const newArrivals = [
-        {
-            id: 'p1',
-            name: 'Premium Cotton Blank Tee',
-            price: 2499,
-            category: 'T-Shirts',
-            badge: 'New',
-            image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=600',
-            hoverImage: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=600'
-        },
-        {
-            id: 'p2',
-            name: 'Slim Fit Oxford Shirt',
-            price: 4899,
-            category: 'Shirts',
-            image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=600'
-        },
-        {
-            id: 'p3',
-            name: 'Essential Fleece Hoodie',
-            price: 5499,
-            category: 'Hoodies',
-            image: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&q=80&w=600'
-        },
-        {
-            id: 'p4',
-            name: 'Slim Fit Stretch Chinos',
-            price: 3999,
-            originalPrice: 4999,
-            category: 'Bottoms',
-            badge: '-20%',
-            image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&q=80&w=600'
-        }
-    ];
+    // Fetch categories from API
+    useEffect(() => {
+        fetch(`${API_URL}/categories`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setApiCategories(data.data);
+                }
+            })
+            .catch(() => { });
+    }, []);
+
+    // Fetch new arrivals from products API
+    useEffect(() => {
+        fetch(`${API_URL}/products?per_page=4&sort=latest`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setNewArrivals(data.data.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        price: p.price,
+                        originalPrice: p.original_price,
+                        category: p.category,
+                        badge: p.badge,
+                        image: p.images.length > 0 ? p.images[0].url : 'https://via.placeholder.com/600x600?text=No+Image',
+                        hoverImage: p.images.length > 1 ? p.images[1].url : null,
+                    })));
+                }
+            })
+            .catch(() => { });
+    }, []);
 
     // Quick Sale Countdown Logic
     const [timeLeft, setTimeLeft] = useState({ days: 3, hours: 14, mins: 45, secs: 12 });
@@ -111,32 +111,20 @@ export default function Home() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-                        <Link to="/shop" state={{ category: 'Shirts' }} className="relative h-[400px] md:h-[500px] group overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-100">
-                            <img src="https://images.unsplash.com/photo-1596755094514-f87e34085b2c?auto=format&fit=crop&q=80&w=800" alt="Men's Shirts" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%]" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300"></div>
-                            <div className="relative z-10 w-full px-8 text-center mt-auto mb-8 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                                <h3 className="font-heading font-bold text-3xl text-white uppercase tracking-wider mb-2">Shirts</h3>
-                                <span className="text-gray-300 text-sm tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">Shop Now</span>
-                            </div>
-                        </Link>
-
-                        <Link to="/shop" state={{ category: 'Hoodies' }} className="relative h-[400px] md:h-[500px] group overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-100">
-                            <img src="https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&q=80&w=800" alt="Men's Hoodies" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%]" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300"></div>
-                            <div className="relative z-10 w-full px-8 text-center mt-auto mb-8 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                                <h3 className="font-heading font-bold text-3xl text-white uppercase tracking-wider mb-2">Hoodies</h3>
-                                <span className="text-gray-300 text-sm tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">Shop Now</span>
-                            </div>
-                        </Link>
-
-                        <Link to="/shop" state={{ category: 'Kids' }} className="relative h-[400px] md:h-[500px] group overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-100">
-                            <img src="https://images.unsplash.com/photo-1519014816548-bf5fe059e98b?auto=format&fit=crop&q=80&w=800" alt="Kids Collection" className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110 grayscale-[30%]" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300"></div>
-                            <div className="relative z-10 w-full px-8 text-center mt-auto mb-8 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                                <h3 className="font-heading font-bold text-3xl text-white uppercase tracking-wider mb-2">Kids</h3>
-                                <span className="text-gray-300 text-sm tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">Shop Now</span>
-                            </div>
-                        </Link>
+                        {apiCategories.length > 0 && apiCategories.slice(0, 3).map(cat => (
+                            <Link key={cat.id} to="/shop" state={{ category: cat.name }} className="relative h-[400px] md:h-[500px] group overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-100">
+                                {cat.image ? (
+                                    <img src={cat.image} alt={cat.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 grayscale-[30%]" />
+                                ) : (
+                                    <div className="absolute inset-0 w-full h-full bg-gray-300"></div>
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 transition-opacity duration-300"></div>
+                                <div className="relative z-10 w-full px-8 text-center mt-auto mb-8 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                                    <h3 className="font-heading font-bold text-3xl text-white uppercase tracking-wider mb-2">{cat.name}</h3>
+                                    <span className="text-gray-300 text-sm tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500">Shop Now</span>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
 
                     <div className="mt-10 text-center md:hidden">
@@ -193,35 +181,25 @@ export default function Home() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                        {/* Collection 1 */}
-                        <div className="relative h-[500px] md:h-[600px] group overflow-hidden bg-gray-900 border border-gray-800">
-                            <img src="https://images.unsplash.com/photo-1523398002811-999aa8e9f5b9?auto=format&fit=crop&q=80&w=1000" alt="Summer Edit" className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 transition-opacity duration-500"></div>
+                        {apiCategories.length > 3 && apiCategories.slice(3, 5).map((cat, index) => (
+                            <div key={cat.id} className="relative h-[500px] md:h-[600px] group overflow-hidden bg-gray-900 border border-gray-800">
+                                <img src={cat.image || `https://images.unsplash.com/photo-${index === 0 ? '1523398002811-999aa8e9f5b9' : '1551028719-00167b16eac5'}?auto=format&fit=crop&q=80&w=1000`} alt={cat.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 transition-opacity duration-500"></div>
 
-                            <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 z-10">
-                                <span className="inline-block px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-widest mb-4">New</span>
-                                <h3 className="text-4xl md:text-5xl font-heading font-bold mb-4">The Summer Edit</h3>
-                                <p className="text-gray-300 mb-8 max-w-md font-light leading-relaxed">Lightweight fabrics and breathable designs to keep you cool when the temperature rises.</p>
-                                <Link to="/shop" state={{ category: 'T-Shirts' }} className="btn-outline border-white text-white hover:bg-white hover:text-black px-8 py-3 uppercase tracking-wider font-bold text-sm inline-flex items-center transition-all">
-                                    Explore Collection <ArrowRight className="w-4 h-4 ml-2" />
-                                </Link>
+                                <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 z-10">
+                                    <span className="inline-block px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-widest mb-4">
+                                        {index === 0 ? 'New' : 'Trending'}
+                                    </span>
+                                    <h3 className="text-4xl md:text-5xl font-heading font-bold mb-4">{cat.name} Collection</h3>
+                                    <p className="text-gray-300 mb-8 max-w-md font-light leading-relaxed">
+                                        {cat.description || `Explore our latest ${cat.name} collection featuring premium fabrics and modern designs.`}
+                                    </p>
+                                    <Link to="/shop" state={{ category: cat.name }} className="btn-outline border-white text-white hover:bg-white hover:text-black px-8 py-3 uppercase tracking-wider font-bold text-sm inline-flex items-center transition-all">
+                                        Explore Collection <ArrowRight className="w-4 h-4 ml-2" />
+                                    </Link>
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Collection 2 */}
-                        <div className="relative h-[500px] md:h-[600px] group overflow-hidden bg-gray-900 border border-gray-800">
-                            <img src="https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&q=80&w=1000" alt="Streetwear Focus" className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 transition-opacity duration-500"></div>
-
-                            <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 z-10">
-                                <span className="inline-block px-3 py-1 border border-white text-white text-[10px] font-bold uppercase tracking-widest mb-4">Trending</span>
-                                <h3 className="text-4xl md:text-5xl font-heading font-bold mb-4">Streetwear Focus</h3>
-                                <p className="text-gray-300 mb-8 max-w-md font-light leading-relaxed">Oversized fits, bold graphics, and urban-inspired silhouettes for the modern street aesthetic.</p>
-                                <Link to="/shop" state={{ category: 'Hoodies' }} className="btn-primary bg-white text-black border-white hover:bg-transparent hover:text-white px-8 py-3 uppercase tracking-wider font-bold text-sm inline-flex items-center transition-all">
-                                    Explore Collection <ArrowRight className="w-4 h-4 ml-2" />
-                                </Link>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>

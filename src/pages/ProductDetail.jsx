@@ -1,48 +1,104 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
-import { ShieldCheck, Truck, RotateCcw, Plus, Minus, Heart, Star } from 'lucide-react';
+import { ShieldCheck, Truck, RotateCcw, Plus, Minus, Heart, Star, Loader2 } from 'lucide-react';
+import { API_URL } from '../api';
 
 export default function ProductDetail() {
     const { id } = useParams();
     const { addToCart } = useCart();
     const { toggleFavorite, isFavorite } = useFavorites();
 
-    // Dummy product
-    const product = {
-        id: id || 'p1',
-        name: 'Premium Cotton Blank Tee',
-        price: 2499,
-        description: 'Elevate your everyday wardrobe with our Premium Cotton Blank Tee. Crafted from 100% organic, long-staple cotton, this t-shirt offers an exceptionally soft hand-feel and superior durability. Features a tailored athletic fit, reinforced stitching, and a clean minimalist aesthetic perfect for layering or wearing solo.',
-        images: [
-            'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800',
-            'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=800',
-            'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80&w=800'
-        ],
-        sizes: ['S', 'M', 'L', 'XL', 'XXL'],
-        colors: ['Black', 'White', 'Navy'],
-        details: [
-            '100% Organic Cotton (220 GSM)',
-            'Pre-shrunk fabric',
-            'True to size athletic fit',
-            'Machine wash cold, tumble dry low'
-        ]
-    };
-
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [activeImage, setActiveImage] = useState(0);
-    const [selectedSize, setSelectedSize] = useState('M');
-    const [selectedColor, setSelectedColor] = useState('Black');
+    const [selectedSize, setSelectedSize] = useState('');
+    const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
 
+    // Fetch product from API
+    useEffect(() => {
+        setLoading(true);
+        setError(null);
+        fetch(`${API_URL}/products/${id}`)
+            .then(res => {
+                if (!res.ok) throw new Error('Product not found');
+                return res.json();
+            })
+            .then(data => {
+                if (data.success && data.data) {
+                    const p = data.data;
+                    setProduct({
+                        id: p.id,
+                        name: p.name,
+                        slug: p.slug,
+                        description: p.description,
+                        price: p.price,
+                        originalPrice: p.original_price,
+                        badge: p.badge,
+                        category: p.category,
+                        images: p.images.length > 0 ? p.images.map(img => img.url) : [
+                            'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800'
+                        ],
+                        sizes: p.sizes?.length > 0 ? p.sizes.map(s => s.size).filter(Boolean) : [],
+                        colors: p.colors?.length > 0 ? p.colors.map(c => c.color_name).filter(Boolean) : [],
+                        colorCodes: p.colors?.length > 0 ? p.colors.reduce((acc, c) => { if (c.color_name && c.color_code) acc[c.color_name] = c.color_code; return acc; }, {}) : {},
+                        details: p.details?.length > 0 ? p.details : ['Premium quality product'],
+                        reviews: p.reviews || [],
+                    });
+                    // Set defaults
+                    if (p.sizes?.length > 0 && p.sizes[0].size) setSelectedSize(p.sizes[0].size);
+                    if (p.colors?.length > 0 && p.colors[0].color_name) setSelectedColor(p.colors[0].color_name);
+                }
+                setLoading(false);
+            })
+            .catch(err => {
+                setError(err.message);
+                setLoading(false);
+            });
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-40 mt-[80px]">
+                <Loader2 className="w-10 h-10 text-black animate-spin mb-4" />
+                <p className="text-gray-500 text-sm uppercase tracking-widest">Loading product...</p>
+            </div>
+        );
+    }
+
+    if (error || !product) {
+        return (
+            <div className="text-center py-40 mt-[80px]">
+                <h2 className="text-2xl font-heading font-bold mb-4">Product Not Found</h2>
+                <p className="text-gray-500 mb-6">The product you're looking for doesn't exist.</p>
+                <Link to="/shop" className="btn-primary px-8 py-3 text-sm font-semibold uppercase tracking-wider">Back to Shop</Link>
+            </div>
+        );
+    }
+
     const handleAddToCart = () => {
-        // Add multiple quantities 
-        const item = { ...product, size: selectedSize, color: selectedColor };
+        const item = {
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.images[0],
+            size: selectedSize,
+            color: selectedColor
+        };
         for (let i = 0; i < quantity; i++) {
             addToCart(item);
         }
-        // We only need to call it once if cart logic is updated, but addToCart handles single additions in our simple context right now.
-        // Let's adapt CartContext next to take quantity, but for now we'll just loop.
+    };
+
+    const getColorStyle = (color) => {
+        if (!color) return '#333';
+        const code = product.colorCodes?.[color];
+        if (code) return code;
+        const map = { 'black': '#000', 'white': '#fff', 'navy': '#000080', 'red': '#dc2626', 'blue': '#2563eb', 'gray': '#6b7280', 'green': '#16a34a', 'beige': '#d4b896', 'brown': '#8b4513' };
+        return map[color.toLowerCase()] || '#333';
     };
 
     return (
@@ -52,9 +108,7 @@ export default function ProductDetail() {
                     <div className="flex items-center space-x-2 text-xs text-gray-400 font-medium uppercase tracking-widest">
                         <Link to="/" className="hover:text-black transition">Home</Link>
                         <span>/</span>
-                        <Link to="/shop" className="hover:text-black transition">Men</Link>
-                        <span>/</span>
-                        <Link to="/shop" className="hover:text-black transition">T-Shirts</Link>
+                        <Link to="/shop" className="hover:text-black transition">{product.category || 'Shop'}</Link>
                         <span>/</span>
                         <span className="text-black">{product.name}</span>
                     </div>
@@ -90,16 +144,19 @@ export default function ProductDetail() {
                             {/* Star Reviews */}
                             <div className="flex items-center gap-2 mb-4">
                                 <div className="flex text-yellow-500">
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current" />
-                                    <Star className="w-4 h-4 fill-current text-gray-300" />
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <Star key={star} className={`w-4 h-4 fill-current ${star > 4 ? 'text-gray-300' : ''}`} />
+                                    ))}
                                 </div>
-                                <span className="text-sm text-gray-500 underline cursor-pointer hover:text-black transition">128 Reviews</span>
+                                <span className="text-sm text-gray-500 underline cursor-pointer hover:text-black transition">{product.reviews.length} Reviews</span>
                             </div>
 
-                            <div className="text-2xl font-bold text-black mb-6">PKR {product.price.toLocaleString()}</div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <span className="text-2xl font-bold text-black">PKR {product.price.toLocaleString()}</span>
+                                {product.originalPrice && (
+                                    <span className="text-lg text-gray-400 line-through">PKR {product.originalPrice.toLocaleString()}</span>
+                                )}
+                            </div>
                             <p className="text-gray-500 text-sm md:text-base leading-relaxed">{product.description}</p>
                         </div>
 
@@ -114,7 +171,7 @@ export default function ProductDetail() {
                                         key={color}
                                         onClick={() => setSelectedColor(color)}
                                         className={`w-10 h-10 rounded-full border-2 transition ${selectedColor === color ? 'border-black ring-2 ring-offset-2 ring-black shadow-lg' : 'border-gray-300 hover:border-gray-400'}`}
-                                        style={{ backgroundColor: color.toLowerCase() === 'navy' ? '#000080' : color.toLowerCase() }}
+                                        style={{ backgroundColor: getColorStyle(color) }}
                                     ></button>
                                 ))}
                             </div>
@@ -189,7 +246,7 @@ export default function ProductDetail() {
                             </div>
                         </div>
 
-                        {/* Details Accordion Idea */}
+                        {/* Details */}
                         <div className="mb-10">
                             <h3 className="font-heading font-bold text-lg uppercase border-b border-black pb-2 tracking-wider mb-4">Product Details</h3>
                             <ul className="space-y-2">
@@ -202,7 +259,7 @@ export default function ProductDetail() {
                             </ul>
                         </div>
 
-                        {/* Customer Reviews Preview */}
+                        {/* Customer Reviews */}
                         <div>
                             <div className="flex justify-between flex-wrap items-center border-b border-black pb-2 mb-6">
                                 <h3 className="font-heading font-bold text-lg uppercase tracking-wider">Customer Reviews</h3>
@@ -210,42 +267,62 @@ export default function ProductDetail() {
                             </div>
 
                             <div className="space-y-6">
-                                <div className="border-b border-gray-100 pb-6">
-                                    <div className="flex justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-sm">Ahsan A.</span>
-                                            <span className="text-[10px] bg-black text-white px-2 py-0.5 uppercase tracking-widest leading-none">Verified</span>
+                                {product.reviews.length > 0 ? product.reviews.map(review => (
+                                    <div key={review.id} className="border-b border-gray-100 pb-6">
+                                        <div className="flex justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-sm">Customer</span>
+                                                <span className="text-[10px] bg-black text-white px-2 py-0.5 uppercase tracking-widest leading-none">Verified</span>
+                                            </div>
+                                            <span className="text-xs text-gray-500">{review.created_at}</span>
                                         </div>
-                                        <span className="text-xs text-gray-500">March 1, 2026</span>
-                                    </div>
-                                    <div className="flex text-yellow-500 mb-2">
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                    </div>
-                                    <h4 className="font-bold text-sm mb-1">Perfect fit and quality</h4>
-                                    <p className="text-sm text-gray-600">The material is incredibly soft and the fit is exactly as described. Will definitely be ordering more in different colors.</p>
-                                </div>
-                                <div className="pb-2">
-                                    <div className="flex justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-sm">Zain K.</span>
-                                            <span className="text-[10px] bg-black text-white px-2 py-0.5 uppercase tracking-widest leading-none">Verified</span>
+                                        <div className="flex text-yellow-500 mb-2">
+                                            {[1, 2, 3, 4, 5].map(star => (
+                                                <Star key={star} className={`w-3 h-3 fill-current ${star > review.rating ? 'text-gray-300' : ''}`} />
+                                            ))}
                                         </div>
-                                        <span className="text-xs text-gray-500">February 20, 2026</span>
+                                        <p className="text-sm text-gray-600">{review.comment}</p>
                                     </div>
-                                    <div className="flex text-yellow-500 mb-2">
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current" />
-                                        <Star className="w-3 h-3 fill-current text-gray-300" />
-                                    </div>
-                                    <h4 className="font-bold text-sm mb-1">Good shirt, shrinks a bit</h4>
-                                    <p className="text-sm text-gray-600">Really nice shirt, but it shrank slightly after the first wash even on cold. Sized up on my next order.</p>
-                                </div>
+                                )) : (
+                                    <>
+                                        <div className="border-b border-gray-100 pb-6">
+                                            <div className="flex justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm">Ahsan A.</span>
+                                                    <span className="text-[10px] bg-black text-white px-2 py-0.5 uppercase tracking-widest leading-none">Verified</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500">March 1, 2026</span>
+                                            </div>
+                                            <div className="flex text-yellow-500 mb-2">
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                            </div>
+                                            <h4 className="font-bold text-sm mb-1">Perfect fit and quality</h4>
+                                            <p className="text-sm text-gray-600">The material is incredibly soft and the fit is exactly as described. Will definitely be ordering more in different colors.</p>
+                                        </div>
+                                        <div className="pb-2">
+                                            <div className="flex justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-sm">Zain K.</span>
+                                                    <span className="text-[10px] bg-black text-white px-2 py-0.5 uppercase tracking-widest leading-none">Verified</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500">February 20, 2026</span>
+                                            </div>
+                                            <div className="flex text-yellow-500 mb-2">
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current" />
+                                                <Star className="w-3 h-3 fill-current text-gray-300" />
+                                            </div>
+                                            <h4 className="font-bold text-sm mb-1">Good shirt, shrinks a bit</h4>
+                                            <p className="text-sm text-gray-600">Really nice shirt, but it shrank slightly after the first wash even on cold. Sized up on my next order.</p>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

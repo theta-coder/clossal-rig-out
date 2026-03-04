@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import { CartProvider } from './context/CartContext';
 import { FavoritesProvider } from './context/FavoritesContext';
+import { AuthProvider } from './context/AuthContext';
 
 // Lazy loading could be added here, but importing directly for simplicity
 import Home from './pages/Home';
@@ -22,36 +23,40 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import ShippingReturns from './pages/ShippingReturns';
 import TrackOrder from './pages/TrackOrder';
+import OrderDetail from './pages/OrderDetail';
 
 function App() {
     return (
-        <FavoritesProvider>
-            <CartProvider>
-                <BrowserRouter>
-                    <Routes>
-                        <Route path="/" element={<Layout />}>
-                            <Route index element={<Home />} />
-                            <Route path="shop" element={<Shop />} />
-                            <Route path="product/:id" element={<ProductDetail />} />
-                            <Route path="checkout" element={<Checkout />} />
-                            <Route path="wishlist" element={<Favorites />} />
-                            <Route path="login" element={<Login />} />
-                            <Route path="profile" element={<Profile />} />
-                            <Route path="orders" element={<OrderHistory />} />
-                            <Route path="addresses" element={<Addresses />} />
-                            <Route path="settings" element={<AccountSettings />} />
-                            <Route path="signup" element={<Signup />} />
-                            <Route path="forgot-password" element={<ForgotPassword />} />
-                            <Route path="size-guide" element={<SizeGuide />} />
-                            <Route path="about" element={<About />} />
-                            <Route path="contact" element={<Contact />} />
-                            <Route path="shipping" element={<ShippingReturns />} />
-                            <Route path="track-order" element={<TrackOrder />} />
-                        </Route>
-                    </Routes>
-                </BrowserRouter>
-            </CartProvider>
-        </FavoritesProvider>
+        <AuthProvider>
+            <FavoritesProvider>
+                <CartProvider>
+                    <BrowserRouter>
+                        <Routes>
+                            <Route path="/" element={<Layout />}>
+                                <Route index element={<Home />} />
+                                <Route path="shop" element={<Shop />} />
+                                <Route path="product/:id" element={<ProductDetail />} />
+                                <Route path="checkout" element={<Checkout />} />
+                                <Route path="wishlist" element={<Favorites />} />
+                                <Route path="login" element={<Login />} />
+                                <Route path="profile" element={<Profile />} />
+                                <Route path="orders" element={<OrderHistory />} />
+                                <Route path="orders/:id" element={<OrderDetail />} />
+                                <Route path="addresses" element={<Addresses />} />
+                                <Route path="settings" element={<AccountSettings />} />
+                                <Route path="signup" element={<Signup />} />
+                                <Route path="forgot-password" element={<ForgotPassword />} />
+                                <Route path="size-guide" element={<SizeGuide />} />
+                                <Route path="about" element={<About />} />
+                                <Route path="contact" element={<Contact />} />
+                                <Route path="shipping" element={<ShippingReturns />} />
+                                <Route path="track-order" element={<TrackOrder />} />
+                            </Route>
+                        </Routes>
+                    </BrowserRouter>
+                </CartProvider>
+            </FavoritesProvider>
+        </AuthProvider>
     );
 }
 
