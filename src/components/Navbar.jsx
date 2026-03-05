@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, User, Heart, ShoppingBag, Menu, X, ChevronDown, ArrowRight, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { API_URL } from '../api';
@@ -11,6 +12,8 @@ export default function Navbar() {
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [apiCategories, setApiCategories] = useState([]);
+    const [announcement, setAnnouncement] = useState(null);
+    const [announcementLoading, setAnnouncementLoading] = useState(true);
     const [searchResults, setSearchResults] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const searchInputRef = useRef(null);
@@ -41,6 +44,21 @@ export default function Navbar() {
                 }
             })
             .catch(() => { });
+    }, []);
+
+    // Fetch active announcement
+    useEffect(() => {
+        fetch(`${API_URL}/announcements/active`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.data) {
+                    setAnnouncement(data.data);
+                }
+                setAnnouncementLoading(false);
+            })
+            .catch(() => {
+                setAnnouncementLoading(false);
+            });
     }, []);
 
     useEffect(() => {
@@ -98,9 +116,50 @@ export default function Navbar() {
     return (
         <>
             {/* Top Banner */}
-            <div className="bg-black text-white py-2 text-center text-xs md:text-sm font-medium tracking-wide">
-                Free shipping on all orders over PKR 5,000 | <Link to="/shop" className="text-gray-300 underline cursor-pointer hover:text-white transition">Shop Now</Link>
-            </div>
+            <AnimatePresence>
+                {!announcementLoading && announcement && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="bg-black text-white text-center text-xs md:text-sm font-medium tracking-wide overflow-hidden"
+                    >
+                        <div className="py-2 flex items-center justify-center px-4 shadow-sm relative overflow-hidden bg-gradient-to-r from-black via-gray-900 to-black">
+                            {/* Framer Motion Shine effect */}
+                            <motion.div
+                                className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                                initial={{ left: '-100%' }}
+                                animate={{ left: '200%' }}
+                                transition={{
+                                    repeat: Infinity,
+                                    duration: 3,
+                                    ease: "easeInOut",
+                                    repeatDelay: 1
+                                }}
+                            />
+
+                            <span className="relative z-10 flex items-center justify-center gap-1 sm:gap-2 flex-wrap drop-shadow-md">
+                                {announcement.message}
+                                {announcement.link_text && announcement.link_url && (
+                                    <>
+                                        <span className="hidden sm:inline">|</span>
+                                        {announcement.link_url.startsWith('http') ? (
+                                            <a href={announcement.link_url} target="_blank" rel="noopener noreferrer" className="text-gray-300 underline cursor-pointer hover:text-white transition font-bold tracking-widest text-[10px] sm:text-xs">
+                                                {announcement.link_text}
+                                            </a>
+                                        ) : (
+                                            <Link to={announcement.link_url} className="text-gray-300 underline cursor-pointer hover:text-white transition font-bold tracking-widest text-[10px] sm:text-xs">
+                                                {announcement.link_text}
+                                            </Link>
+                                        )}
+                                    </>
+                                )}
+                            </span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <header className={`fixed w-full top-auto z-40 transition-all duration-300 ${transparentNav ? 'py-4 bg-transparent text-white' : 'py-3 bg-white shadow-sm border-b border-gray-100 text-black'}`}>
                 <div className="container mx-auto px-4 md:px-8 flex justify-between items-center relative">
