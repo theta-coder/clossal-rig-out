@@ -9,7 +9,10 @@ export default function Home() {
     const { addToCart } = useCart();
     const { toggleFavorite, isFavorite } = useFavorites();
     const [apiCategories, setApiCategories] = useState([]);
+    const [apiCollections, setApiCollections] = useState([]);
     const [newArrivals, setNewArrivals] = useState([]);
+    const [flashSale, setFlashSale] = useState(null);
+    const [banners, setBanners] = useState([]);
 
     // Fetch categories from API
     useEffect(() => {
@@ -18,6 +21,18 @@ export default function Home() {
             .then(data => {
                 if (data.success && data.data) {
                     setApiCategories(data.data);
+                }
+            })
+            .catch(() => { });
+    }, []);
+
+    // Fetch collections from API
+    useEffect(() => {
+        fetch(`${API_URL}/collections`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setApiCollections(data.data);
                 }
             })
             .catch(() => { });
@@ -44,7 +59,23 @@ export default function Home() {
             .catch(() => { });
     }, []);
 
-    // Quick Sale Countdown Logic
+    // Fetch active flash sale
+    useEffect(() => {
+        fetch(`${API_URL}/flash-sales/active`)
+            .then(res => res.json())
+            .then(data => { if (data.success && data.data) setFlashSale(data.data); })
+            .catch(() => { });
+    }, []);
+
+    // Fetch promotional banners
+    useEffect(() => {
+        fetch(`${API_URL}/banners/active`)
+            .then(res => res.json())
+            .then(data => { if (data.success) setBanners(data.data || []); })
+            .catch(() => { });
+    }, []);
+
+    // Sale countdown — uses flash sale ends_at if available, else static fallback
     const [timeLeft, setTimeLeft] = useState({ days: 3, hours: 14, mins: 45, secs: 12 });
     useEffect(() => {
         const timer = setInterval(() => {
@@ -97,6 +128,26 @@ export default function Home() {
                 </div>
             </section>
 
+            {/* Promotional Banners Strip */}
+            {banners.length > 0 && (
+                <div className="bg-black text-white">
+                    {banners.map(banner => (
+                        banner.link_url ? (
+                            <a key={banner.id} href={banner.link_url} className="block">
+                                {banner.image
+                                    ? <img src={banner.image} alt={banner.title} className="w-full max-h-24 object-cover" />
+                                    : <div className="py-3 text-center text-sm font-semibold uppercase tracking-widest">{banner.title}{banner.subtitle && <span className="ml-2 text-gray-300 font-normal">— {banner.subtitle}</span>}</div>
+                                }
+                            </a>
+                        ) : (
+                            <div key={banner.id} className="py-3 text-center text-sm font-semibold uppercase tracking-widest">
+                                {banner.title}{banner.subtitle && <span className="ml-2 text-gray-300 font-normal">— {banner.subtitle}</span>}
+                            </div>
+                        )
+                    ))}
+                </div>
+            )}
+
             {/* Categories Grid */}
             <section className="py-24 bg-white">
                 <div className="container mx-auto px-4">
@@ -133,39 +184,45 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Sale Section */}
+            {/* Sale / Flash Sale Section */}
             <section className="py-24 bg-black relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_var(--tw-gradient-stops))] from-gray-800 via-black to-black opacity-60"></div>
                 <div className="container mx-auto px-4 flex flex-col md:flex-row items-center relative z-10 gap-12">
                     <div className="w-full md:w-1/2 text-white">
                         <h4 className="text-gray-400 uppercase tracking-[0.3em] font-bold mb-4 text-sm border-l-4 border-white pl-4">Limited Time Offer</h4>
-                        <h2 className="text-5xl md:text-7xl font-heading font-bold mb-6 tracking-tight">End of Season<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-white">Sale Is Live</span></h2>
-                        <p className="text-gray-300 mb-10 max-w-md text-lg leading-relaxed font-light">Get up to 50% off on selected premium items. Upgrade your wardrobe while stock lasts.</p>
+                        <h2 className="text-5xl md:text-7xl font-heading font-bold mb-6 tracking-tight">
+                            {flashSale ? flashSale.name : 'End of Season'}
+                            <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-white">
+                                {flashSale
+                                    ? `${flashSale.discount_value}${flashSale.discount_type === 'percentage' ? '%' : ' PKR'} Off`
+                                    : 'Sale Is Live'}
+                            </span>
+                        </h2>
+                        <p className="text-gray-300 mb-10 max-w-md text-lg leading-relaxed font-light">
+                            {flashSale && flashSale.products?.length > 0
+                                ? `${flashSale.products.length} products on sale. Upgrade your wardrobe while stock lasts.`
+                                : 'Get up to 50% off on selected premium items. Upgrade your wardrobe while stock lasts.'}
+                        </p>
 
                         {/* Countdown */}
                         <div className="flex gap-4 mb-10">
-                            <div className="bg-white/5 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 min-w-[70px] md:min-w-[90px] text-center border border-white/10">
-                                <div className="text-4xl font-heading font-light text-white mb-1">{String(timeLeft.days).padStart(2, '0')}</div>
-                                <div className="text-[10px] uppercase tracking-widest text-gray-400">Days</div>
-                            </div>
-                            <div className="bg-white/5 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 min-w-[70px] md:min-w-[90px] text-center border border-white/10">
-                                <div className="text-4xl font-heading font-light text-white mb-1">{String(timeLeft.hours).padStart(2, '0')}</div>
-                                <div className="text-[10px] uppercase tracking-widest text-gray-400">Hours</div>
-                            </div>
-                            <div className="bg-white/5 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 min-w-[70px] md:min-w-[90px] text-center border border-white/10">
-                                <div className="text-4xl font-heading font-light text-white mb-1">{String(timeLeft.mins).padStart(2, '0')}</div>
-                                <div className="text-[10px] uppercase tracking-widest text-gray-400">Mins</div>
-                            </div>
-                            <div className="bg-white/5 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 min-w-[70px] md:min-w-[90px] text-center border border-white/10">
-                                <div className="text-4xl font-heading font-light text-white mb-1">{String(timeLeft.secs).padStart(2, '0')}</div>
-                                <div className="text-[10px] uppercase tracking-widest text-gray-400">Secs</div>
-                            </div>
+                            {[['days', 'Days'], ['hours', 'Hours'], ['mins', 'Mins'], ['secs', 'Secs']].map(([key, label]) => (
+                                <div key={key} className="bg-white/5 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 min-w-[70px] md:min-w-[90px] text-center border border-white/10">
+                                    <div className="text-4xl font-heading font-light text-white mb-1">{String(timeLeft[key]).padStart(2, '0')}</div>
+                                    <div className="text-[10px] uppercase tracking-widest text-gray-400">{label}</div>
+                                </div>
+                            ))}
                         </div>
 
-                        <Link to="/shop" state={{ category: 'Sale' }} className="bg-white text-black px-10 py-4 uppercase tracking-widest font-bold text-sm inline-block hover:bg-gray-200 transition">Shop the Sale</Link>
+                        <Link to="/shop" state={{ featured: true }} className="bg-white text-black px-10 py-4 uppercase tracking-widest font-bold text-sm inline-block hover:bg-gray-200 transition">Shop the Sale</Link>
                     </div>
                     <div className="w-full md:w-1/2 relative group">
-                        <img src="https://images.unsplash.com/photo-1549495115-4ba1e3a24147?auto=format&fit=crop&q=80&w=800" alt="Sale Image" className="w-full h-[350px] md:h-[600px] object-cover relative z-10 grayscale-[20%] group-hover:grayscale-0 transition duration-700" />
+                        {flashSale?.products?.[0]?.image ? (
+                            <img src={flashSale.products[0].image} alt={flashSale.name} className="w-full h-[350px] md:h-[600px] object-cover relative z-10 grayscale-[20%] group-hover:grayscale-0 transition duration-700" />
+                        ) : (
+                            <img src="https://images.unsplash.com/photo-1549495115-4ba1e3a24147?auto=format&fit=crop&q=80&w=800" alt="Sale Image" className="w-full h-[350px] md:h-[600px] object-cover relative z-10 grayscale-[20%] group-hover:grayscale-0 transition duration-700" />
+                        )}
                         <div className="absolute inset-0 border border-white/30 translate-x-6 translate-y-6 z-0 transition-transform duration-500 group-hover:translate-x-4 group-hover:translate-y-4"></div>
                     </div>
                 </div>
@@ -181,20 +238,20 @@ export default function Home() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                        {apiCategories.length > 3 && apiCategories.slice(3, 5).map((cat, index) => (
-                            <div key={cat.id} className="relative h-[500px] md:h-[600px] group overflow-hidden bg-gray-900 border border-gray-800">
-                                <img src={cat.image || `https://images.unsplash.com/photo-${index === 0 ? '1523398002811-999aa8e9f5b9' : '1551028719-00167b16eac5'}?auto=format&fit=crop&q=80&w=1000`} alt={cat.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
+                        {(apiCollections.length > 0 ? apiCollections : []).slice(0, 2).map((col, index) => (
+                            <div key={col.id} className="relative h-[500px] md:h-[600px] group overflow-hidden bg-gray-900 border border-gray-800">
+                                <img src={col.image || `https://images.unsplash.com/photo-${index === 0 ? '1523398002811-999aa8e9f5b9' : '1551028719-00167b16eac5'}?auto=format&fit=crop&q=80&w=1000`} alt={col.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105 opacity-80 group-hover:opacity-100" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-90 transition-opacity duration-500"></div>
 
                                 <div className="absolute bottom-0 left-0 w-full p-8 md:p-12 z-10">
                                     <span className="inline-block px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-widest mb-4">
                                         {index === 0 ? 'New' : 'Trending'}
                                     </span>
-                                    <h3 className="text-4xl md:text-5xl font-heading font-bold mb-4">{cat.name} Collection</h3>
-                                    <p className="text-gray-300 mb-8 max-w-md font-light leading-relaxed">
-                                        {cat.description || `Explore our latest ${cat.name} collection featuring premium fabrics and modern designs.`}
+                                    <h3 className="text-4xl md:text-5xl font-heading font-bold mb-4">{col.name}</h3>
+                                    <p className="text-gray-300 mb-8 max-w-md font-light leading-relaxed line-clamp-2">
+                                        {col.description || `Explore our latest ${col.name} collection featuring premium fabrics and modern designs.`}
                                     </p>
-                                    <Link to="/shop" state={{ category: cat.name }} className="btn-outline border-white text-white hover:bg-white hover:text-black px-8 py-3 uppercase tracking-wider font-bold text-sm inline-flex items-center transition-all">
+                                    <Link to="/shop" state={{ collection: col.id }} className="btn-outline border-white text-white hover:bg-white hover:text-black px-8 py-3 uppercase tracking-wider font-bold text-sm inline-flex items-center transition-all">
                                         Explore Collection <ArrowRight className="w-4 h-4 ml-2" />
                                     </Link>
                                 </div>

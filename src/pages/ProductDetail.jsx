@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
+import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, Truck, RotateCcw, Plus, Minus, Heart, Star, Loader2 } from 'lucide-react';
 import { API_URL } from '../api';
 
@@ -9,8 +10,11 @@ export default function ProductDetail() {
     const { id } = useParams();
     const { addToCart } = useCart();
     const { toggleFavorite, isFavorite } = useFavorites();
+    const { token } = useAuth();
 
     const [product, setProduct] = useState(null);
+    const [variants, setVariants] = useState([]);
+    const [activeVariant, setActiveVariant] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeImage, setActiveImage] = useState(0);
@@ -18,10 +22,26 @@ export default function ProductDetail() {
     const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
 
-    // Fetch product from API
+    // Find matching variant when size or color changes
+    useEffect(() => {
+        if (!variants.length) return;
+        const match = variants.find(v =>
+            (!selectedSize  || v.size?.name  === selectedSize) &&
+            (!selectedColor || v.color?.name === selectedColor)
+        );
+        setActiveVariant(match || null);
+        // Swap to variant image if available
+        if (match?.primary_image) {
+            const variantImgIndex = product?.images?.indexOf(match.primary_image);
+            if (variantImgIndex > 0) setActiveImage(variantImgIndex);
+        }
+    }, [selectedSize, selectedColor, variants]);
+
+    // Fetch product + variants from API
     useEffect(() => {
         setLoading(true);
         setError(null);
+
         fetch(`${API_URL}/products/${id}`)
             .then(res => {
                 if (!res.ok) throw new Error('Product not found');
@@ -48,10 +68,24 @@ export default function ProductDetail() {
                         details: p.details?.length > 0 ? p.details : ['Premium quality product'],
                         reviews: p.reviews || [],
                     });
-                    // Set defaults
                     if (p.sizes?.length > 0 && p.sizes[0].size) setSelectedSize(p.sizes[0].size);
                     if (p.colors?.length > 0 && p.colors[0].color_name) setSelectedColor(p.colors[0].color_name);
+
+                    // Log product view (fire-and-forget)
+                    const sessionId = localStorage.getItem('urban-threads-session-id') || 'guest';
+                    fetch(`${API_URL}/activity/view`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                        body: JSON.stringify({ product_id: p.id, session_id: sessionId, source: 'organic' })
+                    }).catch(() => {});
+
+                    // Fetch variants for this product
+                    return fetch(`${API_URL}/products/${p.id}/variants`);
                 }
+            })
+            .then(res => res?.json())
+            .then(variantData => {
+                if (variantData?.success) setVariants(variantData.data || []);
                 setLoading(false);
             })
             .catch(err => {
@@ -79,18 +113,23 @@ export default function ProductDetail() {
         );
     }
 
+    const displayPrice = activeVariant?.price ?? product.price;
+    const isOutOfStock = variants.length > 0 && (selectedSize || selectedColor) && (!activeVariant || activeVariant.stock === 0);
+    const isLowStock = activeVariant?.stock > 0 && activeVariant?.stock <= 5;
+
     const handleAddToCart = () => {
+        if (isOutOfStock) return;
         const item = {
             id: product.id,
             name: product.name,
-            price: product.price,
+            price: displayPrice,
             image: product.images[0],
             size: selectedSize,
-            color: selectedColor
+            color: selectedColor,
+            quantity,
+            variant_id: activeVariant?.id ?? null,
         };
-        for (let i = 0; i < quantity; i++) {
-            addToCart(item);
-        }
+        addToCart(item);
     };
 
     const getColorStyle = (color) => {
@@ -151,12 +190,18 @@ export default function ProductDetail() {
                                 <span className="text-sm text-gray-500 underline cursor-pointer hover:text-black transition">{product.reviews.length} Reviews</span>
                             </div>
 
-                            <div className="flex items-center gap-3 mb-6">
-                                <span className="text-2xl font-bold text-black">PKR {product.price.toLocaleString()}</span>
+                            <div className="flex items-center gap-3 mb-3">
+                                <span className="text-2xl font-bold text-black">PKR {displayPrice.toLocaleString()}</span>
                                 {product.originalPrice && (
                                     <span className="text-lg text-gray-400 line-through">PKR {product.originalPrice.toLocaleString()}</span>
                                 )}
                             </div>
+                            {isOutOfStock && (
+                                <p className="text-sm font-semibold text-red-500 uppercase tracking-widest mb-3">Out of Stock</p>
+                            )}
+                            {isLowStock && (
+                                <p className="text-sm font-semibold text-amber-500 uppercase tracking-widest mb-3">Only {activeVariant.stock} left!</p>
+                            )}
                             <p className="text-gray-500 text-sm md:text-base leading-relaxed">{product.description}</p>
                         </div>
 
@@ -215,9 +260,10 @@ export default function ProductDetail() {
                             </div>
                             <button
                                 onClick={handleAddToCart}
-                                className="btn-accent flex-1 min-w-[180px] sm:min-w-0 h-12 text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                                disabled={isOutOfStock}
+                                className={`flex-1 min-w-[180px] sm:min-w-0 h-12 text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition ${isOutOfStock ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'btn-accent'}`}
                             >
-                                Add to Cart
+                                {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
                             </button>
                             <button
                                 onClick={(e) => { e.preventDefault(); toggleFavorite(product.id); }}
@@ -271,7 +317,7 @@ export default function ProductDetail() {
                                     <div key={review.id} className="border-b border-gray-100 pb-6">
                                         <div className="flex justify-between mb-2">
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-sm">Customer</span>
+                                                <span className="font-bold text-sm">{review.reviewer_name || 'Customer'}</span>
                                                 <span className="text-[10px] bg-black text-white px-2 py-0.5 uppercase tracking-widest leading-none">Verified</span>
                                             </div>
                                             <span className="text-xs text-gray-500">{review.created_at}</span>
@@ -281,7 +327,7 @@ export default function ProductDetail() {
                                                 <Star key={star} className={`w-3 h-3 fill-current ${star > review.rating ? 'text-gray-300' : ''}`} />
                                             ))}
                                         </div>
-                                        <p className="text-sm text-gray-600">{review.comment}</p>
+                                        <p className="text-sm text-gray-600">{review.body}</p>
                                     </div>
                                 )) : (
                                     <>

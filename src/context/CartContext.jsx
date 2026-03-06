@@ -89,6 +89,7 @@ export function CartProvider({ children }) {
                 body: JSON.stringify({
                     session_id: sessionId,
                     product_id: product.id,
+                    variant_id: product.variant_id ?? null,
                     size: itemSize,
                     color: itemColor,
                     quantity: product.quantity || 1

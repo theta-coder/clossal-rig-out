@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { Package, MapPin, Calendar, Clock, ArrowLeft, CheckCircle, Truck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { API_URL } from '../api';
+import { API_BASE_URL, API_URL } from '../api';
 
 export default function OrderDetail() {
     const { id } = useParams();
@@ -10,6 +10,22 @@ export default function OrderDetail() {
     const [order, setOrder] = useState(null);
     const [fetching, setFetching] = useState(true);
     const [error, setError] = useState(null);
+
+    const resolveOrderItemImage = (imagePath) => {
+        if (!imagePath) return '/placeholder.png';
+
+        const value = String(imagePath).trim();
+        if (!value) return '/placeholder.png';
+        if (/^https?:\/\//i.test(value)) return value;
+
+        const normalized = value.replace(/^\/+/, '');
+
+        if (normalized.startsWith('storage/') || normalized.startsWith('assets/')) {
+            return `${API_BASE_URL}/${normalized}`;
+        }
+
+        return `${API_BASE_URL}/storage/${normalized}`;
+    };
 
     useEffect(() => {
         if (token && id) {
@@ -136,8 +152,12 @@ export default function OrderDetail() {
                                     <div key={item.id} className="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-gray-100 transition-all">
                                         <div className="w-20 h-24 bg-white rounded-xl overflow-hidden border border-gray-200 flex-shrink-0">
                                             <img
-                                                src={item.product_image ? `${API_URL}/storage/${item.product_image}` : '/placeholder.png'}
+                                                src={resolveOrderItemImage(item.product_image)}
                                                 alt={item.product_name}
+                                                onError={(e) => {
+                                                    e.currentTarget.onerror = null;
+                                                    e.currentTarget.src = '/placeholder.png';
+                                                }}
                                                 className="w-full h-full object-cover"
                                             />
                                         </div>

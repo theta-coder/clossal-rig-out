@@ -21,7 +21,7 @@ export default function Navbar() {
     const navigate = useNavigate();
 
     const { cartCount, setIsCartOpen } = useCart();
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const location = useLocation();
 
     const isHome = location.pathname === '/';
@@ -94,6 +94,16 @@ export default function Navbar() {
                             image: p.images.length > 0 ? p.images[0].url : 'https://via.placeholder.com/150x150?text=No+Image',
                             price: p.price,
                         })));
+                        // Log search query (fire-and-forget)
+                        fetch(`${API_URL}/activity/search`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                            },
+                            body: JSON.stringify({ query: searchQuery, results_count: data.data.length })
+                        }).catch(() => {});
                     }
                     setSearchLoading(false);
                 })
@@ -103,7 +113,7 @@ export default function Navbar() {
                 });
         }, 400);
         return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-    }, [searchQuery]);
+    }, [searchQuery, token]);
 
     const transparentNav = isHome && !isScrolled;
 

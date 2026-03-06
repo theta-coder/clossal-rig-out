@@ -8,6 +8,7 @@ import { API_URL, API_BASE_URL } from '../api';
 export default function Shop() {
     const location = useLocation();
     const initialCategory = location.state?.category;
+    const initialCollection = location.state?.collection;
     const initialSort = location.state?.sortBy;
 
     const [filtersOpen, setFiltersOpen] = useState(false);
@@ -16,7 +17,9 @@ export default function Shop() {
 
     // Filter States
     const [selectedCategories, setSelectedCategories] = useState(initialCategory ? [initialCategory] : []);
+    const [selectedCollection, setSelectedCollection] = useState(initialCollection || null);
     const [selectedSizes, setSelectedSizes] = useState([]);
+    const [selectedTags, setSelectedTags] = useState([]);
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
     const [debouncedPrice, setDebouncedPrice] = useState({ min: '', max: '' });
     const [sortBy, setSortBy] = useState(initialSort || 'default');
@@ -27,12 +30,14 @@ export default function Shop() {
     const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 });
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Dynamic categories and sizes from API
+    // Dynamic categories, sizes and tags from API
     const [availableCategories, setAvailableCategories] = useState([]);
     const [availableSizes, setAvailableSizes] = useState([]);
+    const [availableTags, setAvailableTags] = useState([]);
+    const [availableCollections, setAvailableCollections] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-    // Fetch categories and sizes
+    // Fetch filters data
     useEffect(() => {
         fetch(`${API_URL}/categories`)
             .then(res => res.json())
@@ -54,7 +59,7 @@ export default function Shop() {
                 setCategoriesLoading(false);
             });
 
-        // Fetch sizes from database
+        // Fetch sizes
         fetch(`${API_URL}/sizes`)
             .then(res => res.json())
             .then(data => {
@@ -63,6 +68,26 @@ export default function Shop() {
                 }
             })
             .catch(err => console.error('Failed to fetch sizes:', err));
+
+        // Fetch collections
+        fetch(`${API_URL}/collections`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setAvailableCollections(data.data);
+                }
+            })
+            .catch(err => console.error('Failed to fetch collections:', err));
+
+        // Fetch tags
+        fetch(`${API_URL}/tags`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setAvailableTags(data.data);
+                }
+            })
+            .catch(err => console.error('Failed to fetch tags:', err));
     }, []);
 
     // Fetch products from API
@@ -72,17 +97,27 @@ export default function Shop() {
         params.append('per_page', '12');
         params.append('page', currentPage);
 
-        // Category filter (send as comma-separated string)
+        // Category filter
         if (selectedCategories.length > 0) {
             params.append('category', selectedCategories.join(','));
         }
 
-        // Size filter (send as comma-separated string)
+        // Collection filter
+        if (selectedCollection) {
+            params.append('collection_id', selectedCollection);
+        }
+
+        // Size filter
         if (selectedSizes.length > 0) {
             params.append('size', selectedSizes.join(','));
         }
 
-        // Price range (using debounced values for better performance)
+        // Tag filter
+        if (selectedTags.length > 0) {
+            params.append('tag', selectedTags.join(','));
+        }
+
+        // Price range
         if (debouncedPrice.min) {
             params.append('min_price', debouncedPrice.min);
         }
@@ -124,7 +159,7 @@ export default function Shop() {
                 setProducts([]);
                 setLoading(false);
             });
-    }, [selectedCategories, sortBy, currentPage, debouncedPrice, selectedSizes]);
+    }, [selectedCategories, selectedCollection, sortBy, currentPage, debouncedPrice, selectedSizes, selectedTags]);
 
     // Debounce price range
     useEffect(() => {
@@ -142,6 +177,9 @@ export default function Shop() {
     useEffect(() => {
         if (location.state?.category) {
             setSelectedCategories([location.state.category]);
+        }
+        if (location.state?.collection) {
+            setSelectedCollection(location.state.collection);
         }
         if (location.state?.sortBy) {
             setSortBy(location.state.sortBy);
@@ -164,9 +202,18 @@ export default function Shop() {
         setCurrentPage(1);
     };
 
+    const handleTagChange = (tag) => {
+        setSelectedTags(prev =>
+            prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+        );
+        setCurrentPage(1);
+    };
+
     const handleClearFilters = () => {
         setSelectedCategories([]);
+        setSelectedCollection(null);
         setSelectedSizes([]);
+        setSelectedTags([]);
         setPriceRange({ min: '', max: '' });
         setSortBy('default');
         setCurrentPage(1);
@@ -267,7 +314,7 @@ export default function Shop() {
                             </div>
 
                             <div className="space-y-10 flex-1">
-                                {(selectedCategories.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (
+                                {(selectedCategories.length > 0 || selectedCollection || selectedSizes.length > 0 || selectedTags.length > 0 || priceRange.min || priceRange.max) && (
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm font-bold text-black uppercase tracking-widest">Active Filters</span>
@@ -280,10 +327,22 @@ export default function Shop() {
                                                     <button onClick={() => handleCategoryChange(cat)} className="ml-2 hover:text-red-500"><X className="w-3 h-3" /></button>
                                                 </span>
                                             ))}
+                                            {selectedCollection && (
+                                                <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-black border border-gray-200">
+                                                    Collection: {availableCollections.find(c => c.id === selectedCollection)?.name}
+                                                    <button onClick={() => setSelectedCollection(null)} className="ml-2 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                                </span>
+                                            )}
                                             {selectedSizes.map(size => (
                                                 <span key={size} className="inline-flex items-center px-3 py-1 bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-black border border-gray-200">
                                                     Size: {size}
                                                     <button onClick={() => handleSizeChange(size)} className="ml-2 hover:text-red-500"><X className="w-3 h-3" /></button>
+                                                </span>
+                                            ))}
+                                            {selectedTags.map(tag => (
+                                                <span key={tag} className="inline-flex items-center px-3 py-1 bg-gray-100 text-[10px] font-bold uppercase tracking-wider text-black border border-gray-200">
+                                                    Tag: {tag}
+                                                    <button onClick={() => handleTagChange(tag)} className="ml-2 hover:text-red-500"><X className="w-3 h-3" /></button>
                                                 </span>
                                             ))}
                                             {(priceRange.min || priceRange.max) && (
@@ -295,6 +354,34 @@ export default function Shop() {
                                         </div>
                                     </div>
                                 )}
+
+                                <div>
+                                    <h3 className="font-heading font-bold text-lg uppercase mb-5 border-b border-black pb-2 tracking-wider">Collections</h3>
+                                    <ul className="space-y-4 text-sm text-gray-600 font-medium">
+                                        {availableCollections.map(col => (
+                                            <li key={col.id}>
+                                                <label className="flex items-center cursor-pointer group hover:text-black transition">
+                                                    <input
+                                                        type="radio"
+                                                        name="collection"
+                                                        className="hidden peer"
+                                                        checked={selectedCollection === col.id}
+                                                        onChange={() => { setSelectedCollection(col.id); setCurrentPage(1); }}
+                                                    />
+                                                    <div className="w-5 h-5 border border-gray-300 rounded-full mr-3 flex items-center justify-center transition group-hover:border-black peer-checked:bg-black peer-checked:border-black relative">
+                                                        <div className="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                                    </div>
+                                                    {col.name}
+                                                </label>
+                                            </li>
+                                        ))}
+                                        {selectedCollection && (
+                                            <li>
+                                                <button onClick={() => setSelectedCollection(null)} className="text-xs text-gray-500 hover:text-black underline">Show all collections</button>
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
 
                                 <div>
                                     <h3 className="font-heading font-bold text-lg uppercase mb-5 border-b border-black pb-2 tracking-wider">Categories</h3>
@@ -359,6 +446,25 @@ export default function Shop() {
                                     {selectedSizes.length > 0 && (
                                         <button onClick={() => setSelectedSizes([])} className="text-xs text-gray-500 hover:text-black mt-3 block underline">Clear sizes</button>
                                     )}
+                                </div>
+
+                                <div>
+                                    <h3 className="font-heading font-bold text-lg uppercase mb-5 border-b border-black pb-2 tracking-wider">Tags</h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableTags.map(tag => (
+                                            <label key={tag.id} className="cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="peer hidden"
+                                                    checked={selectedTags.includes(tag.name)}
+                                                    onChange={() => handleTagChange(tag.name)}
+                                                />
+                                                <div className="px-3 py-1 border border-gray-200 text-[10px] font-bold uppercase tracking-wider peer-checked:bg-black peer-checked:text-white hover:border-black transition">
+                                                    {tag.name}
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 

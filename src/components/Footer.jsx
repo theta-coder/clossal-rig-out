@@ -1,17 +1,58 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { useState } from 'react';
+import { API_URL } from '../api';
 
 export default function Footer() {
+    const [email, setEmail] = useState('');
+    const [newsletterMsg, setNewsletterMsg] = useState(null);
+    const [newsletterLoading, setNewsletterLoading] = useState(false);
+
+    const handleSubscribe = async (e) => {
+        e.preventDefault();
+        if (!email) return;
+        setNewsletterLoading(true);
+        setNewsletterMsg(null);
+        try {
+            const res = await fetch(`${API_URL}/newsletter/subscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const data = await res.json();
+            setNewsletterMsg({ type: data.success ? 'success' : 'error', text: data.message });
+            if (data.success) setEmail('');
+        } catch {
+            setNewsletterMsg({ type: 'error', text: 'Something went wrong. Please try again.' });
+        } finally {
+            setNewsletterLoading(false);
+        }
+    };
+
     return (
         <>
             <section className="py-16 text-center footer-gradient">
                 <div className="container mx-auto px-4 text-white">
                     <h2 className="text-3xl font-heading font-bold uppercase mb-4 tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-gray-300 to-white">Subscribe to our newsletter</h2>
                     <p className="text-gray-400 mb-8 max-w-md mx-auto">Get 10% off your first purchase when you sign up.</p>
-                    <form className="max-w-md mx-auto relative flex border-b border-gray-500 pb-2">
-                        <input type="email" placeholder="YOUR EMAIL ADDRESS" className="w-full bg-transparent border-none text-white focus:outline-none placeholder-gray-500 text-sm tracking-widest pl-2" />
-                        <button type="submit" className="text-white hover:text-gray-300 font-bold uppercase tracking-widest text-sm px-4">Subscribe</button>
+                    <form onSubmit={handleSubscribe} className="max-w-md mx-auto relative flex border-b border-gray-500 pb-2">
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            placeholder="YOUR EMAIL ADDRESS"
+                            className="w-full bg-transparent border-none text-white focus:outline-none placeholder-gray-500 text-sm tracking-widest pl-2"
+                            required
+                        />
+                        <button type="submit" disabled={newsletterLoading} className="text-white hover:text-gray-300 font-bold uppercase tracking-widest text-sm px-4 disabled:opacity-50">
+                            {newsletterLoading ? '...' : 'Subscribe'}
+                        </button>
                     </form>
+                    {newsletterMsg && (
+                        <p className={`mt-4 text-sm font-medium ${newsletterMsg.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                            {newsletterMsg.text}
+                        </p>
+                    )}
                 </div>
             </section>
 

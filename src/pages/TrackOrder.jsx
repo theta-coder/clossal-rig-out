@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Package, Truck, CheckCircle, Clock, MapPin, Calendar, Search, AlertCircle, ChevronRight } from 'lucide-react';
-import { API_URL } from '../api';
+import { API_BASE_URL, API_URL } from '../api';
 
 export default function TrackOrder() {
     const [searchParams] = useSearchParams();
@@ -10,6 +10,22 @@ export default function TrackOrder() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    const resolveOrderItemImage = (imagePath) => {
+        if (!imagePath) return '/placeholder.png';
+
+        const value = String(imagePath).trim();
+        if (!value) return '/placeholder.png';
+        if (/^https?:\/\//i.test(value)) return value;
+
+        const normalized = value.replace(/^\/+/, '');
+
+        if (normalized.startsWith('storage/') || normalized.startsWith('assets/')) {
+            return `${API_BASE_URL}/${normalized}`;
+        }
+
+        return `${API_BASE_URL}/storage/${normalized}`;
+    };
 
     const getStatusIcon = (status) => {
         switch (status?.toLowerCase()) {
@@ -213,8 +229,12 @@ export default function TrackOrder() {
                                             <div key={item.id} className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl">
                                                 <div className="w-16 h-16 bg-white rounded-xl overflow-hidden border border-gray-100 flex-shrink-0">
                                                     <img
-                                                        src={item.product_image ? `${API_URL}/storage/${item.product_image}` : '/placeholder.png'}
+                                                        src={resolveOrderItemImage(item.product_image)}
                                                         alt={item.product_name}
+                                                        onError={(e) => {
+                                                            e.currentTarget.onerror = null;
+                                                            e.currentTarget.src = '/placeholder.png';
+                                                        }}
                                                         className="w-full h-full object-cover"
                                                     />
                                                 </div>
